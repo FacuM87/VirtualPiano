@@ -10,9 +10,27 @@ const blackKeys = [
   { note: "A#4", position: 5.7 },
 ];
 
+
+const keyMap: Record<string, string> = {
+  a: "C4",
+  w: "C#4",
+  s: "D4",
+  e: "D#4",
+  d: "E4",
+  f: "F4",
+  t: "F#4",
+  g: "G4",
+  y: "G#4",
+  h: "A4",
+  u: "A#4",
+  j: "B4",
+  k: "C5",
+};
+
 export default function Piano() {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
   const [started, setStarted] = useState(false);
+  const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const s = new Tone.Sampler({
@@ -33,6 +51,36 @@ export default function Piano() {
       s.dispose();
     };
   }, []);
+
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const note = keyMap[e.key.toLowerCase()];
+      if (note) {
+        playNote(note);
+        setPressedKeys((prev) => new Set(prev).add(note));
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const note = keyMap[e.key.toLowerCase()];
+      if (note) {
+        setPressedKeys((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(note);
+          return newSet;
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [sampler]);
 
   const startAudio = async () => {
     await Tone.start();
@@ -63,23 +111,29 @@ export default function Piano() {
   return (
     <div className="flex justify-center mt-10">
       <div className="relative flex">
+        {/* Teclas blancas */}
         {whiteKeys.map((note) => (
           <div
             key={note}
             onMouseDown={() => playNote(note)}
-            className="w-16 h-56 bg-white border border-gray-400 rounded-b-lg active:bg-gray-300 cursor-pointer flex justify-center items-end relative"
+            className={`w-16 h-56 bg-white border border-gray-400 rounded-b-lg cursor-pointer flex justify-center items-end relative
+              ${pressedKeys.has(note) ? "bg-gray-300" : ""}
+            `}
           >
             <span className="text-xs text-gray-600 mb-2 select-none">{note}</span>
           </div>
         ))}
 
+        {/* Teclas negras */}
         {blackKeys.map(({ note, position }) => (
           <div
             key={note}
             onMouseDown={() => playNote(note)}
-            className="absolute top-0 w-10 h-36 bg-black rounded-b-md active:bg-gray-700 cursor-pointer z-20 transition-transform active:scale-95"
+            className={`absolute top-0 w-10 h-36 bg-black rounded-b-md cursor-pointer z-20 transition-transform active:scale-95
+              ${pressedKeys.has(note) ? "bg-gray-800" : ""}
+            `}
             style={{
-              left: `${position * 4}rem`, 
+              left: `${position * 4}rem`,
             }}
           ></div>
         ))}
