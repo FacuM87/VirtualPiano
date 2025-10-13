@@ -10,7 +10,6 @@ const blackKeys = [
   { note: "A#4", position: 5.7 },
 ];
 
-
 const keyMap: Record<string, string> = {
   a: "C4",
   w: "C#4",
@@ -52,13 +51,14 @@ export default function Piano() {
     };
   }, []);
 
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const note = keyMap[e.key.toLowerCase()];
-      if (note) {
-        playNote(note);
-        setPressedKeys((prev) => new Set(prev).add(note));
+      if (note && sampler) {
+        if (!pressedKeys.has(note)) {
+          playNote(note);
+          setPressedKeys((prev) => new Set(prev).add(note));
+        }
       }
     };
 
@@ -80,7 +80,7 @@ export default function Piano() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [sampler]);
+  }, [sampler, pressedKeys]);
 
   const startAudio = async () => {
     await Tone.start();
@@ -90,6 +90,19 @@ export default function Piano() {
   const playNote = (note: string) => {
     if (!sampler) return;
     sampler.triggerAttackRelease(note, "8n");
+  };
+
+  const handleMouseDown = (note: string) => {
+    playNote(note);
+    setPressedKeys((prev) => new Set(prev).add(note));
+  };
+
+  const handleMouseUp = (note: string) => {
+    setPressedKeys((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(note);
+      return newSet;
+    });
   };
 
   if (!started) {
@@ -109,18 +122,24 @@ export default function Piano() {
   }
 
   return (
-    <div className="flex justify-center mt-10">
+    <div className="flex justify-center mt-10 select-none">
       <div className="relative flex">
         {/* Teclas blancas */}
         {whiteKeys.map((note) => (
           <div
             key={note}
-            onMouseDown={() => playNote(note)}
-            className={`w-16 h-56 bg-white border border-gray-400 rounded-b-lg cursor-pointer flex justify-center items-end relative
-              ${pressedKeys.has(note) ? "bg-gray-300" : ""}
+            onMouseDown={() => handleMouseDown(note)}
+            onMouseUp={() => handleMouseUp(note)}
+            onMouseLeave={() => handleMouseUp(note)}
+            className={`w-16 h-56 bg-white border border-gray-400 rounded-b-lg cursor-pointer flex justify-center items-end relative transition-all duration-100 origin-top
+              ${
+                pressedKeys.has(note)
+                  ? "scale-y-95 brightness-90"
+                  : "hover:brightness-95"
+              }
             `}
           >
-            <span className="text-xs text-gray-600 mb-2 select-none">{note}</span>
+            <span className="text-xs text-gray-600 mb-2">{note}</span>
           </div>
         ))}
 
@@ -128,9 +147,15 @@ export default function Piano() {
         {blackKeys.map(({ note, position }) => (
           <div
             key={note}
-            onMouseDown={() => playNote(note)}
-            className={`absolute top-0 w-10 h-36 bg-black rounded-b-md cursor-pointer z-20 transition-transform active:scale-95
-              ${pressedKeys.has(note) ? "bg-gray-800" : ""}
+            onMouseDown={() => handleMouseDown(note)}
+            onMouseUp={() => handleMouseUp(note)}
+            onMouseLeave={() => handleMouseUp(note)}
+            className={`absolute top-0 w-10 h-36 bg-black rounded-b-md cursor-pointer z-20 transition-all duration-100 origin-top
+              ${
+                pressedKeys.has(note)
+                  ? "scale-y-95 brightness-75"
+                  : "hover:brightness-90"
+              }
             `}
             style={{
               left: `${position * 4}rem`,
