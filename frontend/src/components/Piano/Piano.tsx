@@ -32,10 +32,8 @@ export default function Piano() {
   const [loaded, setLoaded] = useState(false);
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
-  // Estado de notas activas para controlar duración
   const [activeNotes, setActiveNotes] = useState<Record<string, boolean>>({});
 
-  // Cargar sampler
   useEffect(() => {
     const s: Tone.Sampler = new Tone.Sampler({
       urls: {
@@ -55,7 +53,6 @@ export default function Piano() {
     return () => {s.dispose()};
   }, []);
 
-  // Teclado físico
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const note = keyMap[e.key.toLowerCase()];
@@ -88,25 +85,21 @@ export default function Piano() {
     setStarted(true);
   };
 
-  // Trigger de ataque
   const playNote = (note: string) => {
     if (!sampler) return;
     if (Tone.context.state !== "running") Tone.context.resume();
 
-    // Marcar nota activa
     setActiveNotes((prev) => ({ ...prev, [note]: true }));
 
     sampler.triggerAttack(note);
   };
 
-  // Release suave
   const releaseNote = (note: string) => {
     if (!sampler) return;
     setActiveNotes((prev) => ({ ...prev, [note]: false }));
 
-    // Solo liberar si la nota no sigue activa (evita cortar mientras está presionada)
     setTimeout(() => {
-      if (!activeNotes[note]) sampler.triggerRelease(note, 0.5); // 0.5s release
+      if (!activeNotes[note]) sampler.triggerRelease(note, 0.5); 
     }, 50);
   };
 
