@@ -40,10 +40,7 @@ export default function Piano() {
         A4: "A4.mp3",
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
-      onload: () => {
-        console.log("🎵 Sampler cargado");
-        setSampler(s);
-      },
+      onload: () => setSampler(s),
     }).toDestination();
 
     return () => {
@@ -54,11 +51,9 @@ export default function Piano() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const note = keyMap[e.key.toLowerCase()];
-      if (note && sampler) {
-        if (!pressedKeys.has(note)) {
-          playNote(note);
-          setPressedKeys((prev) => new Set(prev).add(note));
-        }
+      if (note && !pressedKeys.has(note)) {
+        playNote(note);
+        setPressedKeys((prev) => new Set(prev).add(note));
       }
     };
 
@@ -122,7 +117,7 @@ export default function Piano() {
   }
 
   return (
-    <div className="flex justify-center mt-10 select-none">
+    <div className="flex justify-center mt-10 perspective-[1000px] select-none">
       <div className="relative flex">
         {/* Teclas blancas */}
         {whiteKeys.map((note) => (
@@ -131,15 +126,16 @@ export default function Piano() {
             onMouseDown={() => handleMouseDown(note)}
             onMouseUp={() => handleMouseUp(note)}
             onMouseLeave={() => handleMouseUp(note)}
-            className={`w-16 h-56 bg-white border border-gray-400 rounded-b-lg cursor-pointer flex justify-center items-end relative transition-all duration-100 origin-top
+            className={`w-16 h-56 bg-white border border-gray-400 rounded-b-lg cursor-pointer flex justify-center items-end relative
+              transition-all duration-100 ease-in-out transform origin-top
               ${
                 pressedKeys.has(note)
-                  ? "scale-y-95 brightness-90"
-                  : "hover:brightness-95"
+                  ? "bg-gray-300 translate-y-[2px] rotateX-4 shadow-inner"
+                  : "hover:brightness-95 shadow"
               }
             `}
           >
-            <span className="text-xs text-gray-600 mb-2">{note}</span>
+            <span className="text-xs text-gray-600 mb-2 select-none">{note}</span>
           </div>
         ))}
 
@@ -150,17 +146,19 @@ export default function Piano() {
             onMouseDown={() => handleMouseDown(note)}
             onMouseUp={() => handleMouseUp(note)}
             onMouseLeave={() => handleMouseUp(note)}
-            className={`absolute top-0 w-10 h-36 bg-black rounded-b-md cursor-pointer z-20 transition-all duration-100 origin-top
-              ${
-                pressedKeys.has(note)
-                  ? "scale-y-95 brightness-75"
-                  : "hover:brightness-90"
-              }
+            className={`absolute top-0 w-10 h-36 rounded-b-md cursor-pointer z-20 transition-all duration-100 ease-in-out transform origin-top bg-black shadow-lg
+              ${pressedKeys.has(note) ? "translate-y-[2px] rotateX-5 shadow-inner" : ""}
             `}
-            style={{
-              left: `${position * 4}rem`,
-            }}
-          ></div>
+            style={{ left: `${position * 4}rem` }}
+          >
+            <div
+              className={`absolute top-0 left-0 w-full h-1/2 pointer-events-none rounded-t-md
+                bg-gradient-to-b from-white/20 to-transparent
+                transition-all duration-100 ease-in-out
+                ${pressedKeys.has(note) ? "opacity-0 translate-y-1" : "opacity-80 translate-y-0"}
+              `}
+            />
+          </div>
         ))}
       </div>
     </div>
