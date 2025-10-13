@@ -29,10 +29,15 @@ const keyMap: Record<string, string> = {
 export default function Piano() {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
   const [started, setStarted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
+  // Estado de notas activas para controlar duración
+  const [activeNotes, setActiveNotes] = useState<Record<string, boolean>>({});
+
+  // Cargar sampler
   useEffect(() => {
-    const s = new Tone.Sampler({
+    const s: Tone.Sampler = new Tone.Sampler({
       urls: {
         C4: "C4.mp3",
         "D#4": "Ds4.mp3",
@@ -40,14 +45,17 @@ export default function Piano() {
         A4: "A4.mp3",
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
-      onload: () => setSampler(s),
+      onload: () => {
+        console.log("🎵 Sampler cargado");
+        setSampler(s);
+        setLoaded(true);
+      },
     }).toDestination();
 
-    return () => {
-      s.dispose();
-    };
+    return () => {s.dispose()};
   }, []);
 
+  // Teclado físico
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const note = keyMap[e.key.toLowerCase()];
@@ -56,10 +64,10 @@ export default function Piano() {
         setPressedKeys((prev) => new Set(prev).add(note));
       }
     };
-
     const handleKeyUp = (e: KeyboardEvent) => {
       const note = keyMap[e.key.toLowerCase()];
       if (note) {
+        releaseNote(note);
         setPressedKeys((prev) => {
           const newSet = new Set(prev);
           newSet.delete(note);
@@ -67,10 +75,8 @@ export default function Piano() {
         });
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
@@ -82,9 +88,26 @@ export default function Piano() {
     setStarted(true);
   };
 
+  // Trigger de ataque
   const playNote = (note: string) => {
     if (!sampler) return;
-    sampler.triggerAttackRelease(note, "8n");
+    if (Tone.context.state !== "running") Tone.context.resume();
+
+    // Marcar nota activa
+    setActiveNotes((prev) => ({ ...prev, [note]: true }));
+
+    sampler.triggerAttack(note);
+  };
+
+  // Release suave
+  const releaseNote = (note: string) => {
+    if (!sampler) return;
+    setActiveNotes((prev) => ({ ...prev, [note]: false }));
+
+    // Solo liberar si la nota no sigue activa (evita cortar mientras está presionada)
+    setTimeout(() => {
+      if (!activeNotes[note]) sampler.triggerRelease(note, 0.5); // 0.5s release
+    }, 50);
   };
 
   const handleMouseDown = (note: string) => {
@@ -93,6 +116,7 @@ export default function Piano() {
   };
 
   const handleMouseUp = (note: string) => {
+    releaseNote(note);
     setPressedKeys((prev) => {
       const newSet = new Set(prev);
       newSet.delete(note);
@@ -100,18 +124,16 @@ export default function Piano() {
     });
   };
 
-  if (!started) {
+  if (!started || !loaded) {
     return (
       <div className="flex flex-col items-center justify-center mt-20 text-center">
         <button
           onClick={startAudio}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all"
         >
-          🎵 Iniciar Piano
+          🎵 {loaded ? "Iniciar Piano" : "Cargando Piano..."}
         </button>
-        <p className="text-sm text-gray-400 mt-2">
-          Haz clic para habilitar el sonido
-        </p>
+        {!loaded && <p className="text-sm text-gray-400 mt-2">Cargando sonidos...</p>}
       </div>
     );
   }
