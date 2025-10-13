@@ -1,11 +1,12 @@
 import './App.css'
+import Piano from './components/Piano/Piano'
 
 function App() {
 
 
   return (
     <>
-      <h1 className='text-3xl font-bold underline'>Hola!</h1>
+      <Piano/>
     </>
   )
 }
