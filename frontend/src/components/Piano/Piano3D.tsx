@@ -1,8 +1,10 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { useState, useRef } from "react";
+import * as Tone from "tone";
+import { useEffect, useRef, useState } from "react";
 
+// Configuración de notas (a mejorar, todo hardcodeado por ahora para testeo)
 const whiteKeys = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 const blackKeys = [
   { note: "C#4", offset: 0.7 },
@@ -13,20 +15,21 @@ const blackKeys = [
 ];
 
 type KeyProps = {
-  color: "white" | "black";
+  color: string;
   position: [number, number, number];
   width: number;
   depth: number;
   note: string;
+  sampler: Tone.Sampler | null;
 };
 
-function Key({ color, position, width, depth }: KeyProps) {
+function Key({ color, position, width, depth, note, sampler }: KeyProps) {
   const [pressed, setPressed] = useState(false);
-  const meshRef = useRef<THREE.Mesh>(null!);
+  const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame(() => {
     if (!meshRef.current) return;
-    const targetY = pressed ? (color === "black" ? -0.08 : -0.12) : 0;
+    const targetY = pressed ? -0.15 : 0;
     meshRef.current.position.y = THREE.MathUtils.lerp(
       meshRef.current.position.y,
       position[1] + targetY,
@@ -34,37 +37,80 @@ function Key({ color, position, width, depth }: KeyProps) {
     );
   });
 
+  const handlePress = (e: PointerEvent) => {
+    e.stopPropagation();
+    setPressed(true);
+    if (sampler) {
+      sampler.triggerAttack(note); 
+    }
+  };
+
+  const handleRelease = (e: PointerEvent) => {
+    e.stopPropagation();
+    setPressed(false);
+    if (sampler) {
+      sampler.triggerRelease(note, "+0.2"); 
+    }
+  };
+
   return (
     <mesh
       ref={meshRef}
       position={position}
       castShadow
       receiveShadow
-      onPointerDown={(e) => {
-        e.stopPropagation(); 
-        setPressed(true);
-      }}
-      onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}
+      onPointerDown={handlePress}
+      onPointerUp={handleRelease}
+      onPointerLeave={handleRelease}
     >
       <boxGeometry args={[width, 0.5, depth]} />
       <meshStandardMaterial
         color={color}
         metalness={color === "black" ? 0.5 : 0.1}
-        roughness={color === "black" ? 0.4 : 0.7}
+        roughness={color === "black" ? 0.3 : 0.7}
       />
     </mesh>
   );
 }
 
 export default function Piano3D() {
+  const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // Cargar el sampler de Tone.js - a confirmar el useEffect
+  useEffect(() => {
+    const s = new Tone.Sampler({
+      urls: {
+        C4: "C4.mp3",
+        "D#4": "Ds4.mp3",
+        "F#4": "Fs4.mp3",
+        A4: "A4.mp3",
+      },
+      baseUrl: "https://tonejs.github.io/audio/salamander/",
+      release: 2, 
+      onload: () => {
+        setSampler(s);
+        setLoaded(true);
+        console.log("Sampler cargado");
+      },
+    }).toDestination();
+
+    return () => {
+      s.dispose();
+    };
+  }, []);
+
   return (
-    <div className="w-full h-screen bg-gray-900">
-      <Canvas camera={{ position: [0, 5, 12], fov: 45 }} shadows>
-        {/* Luces */}
-        <ambientLight intensity={0.3} />
+    <div className="w-full h-screen bg-gradient-to-b from-gray-800 to-black">
+      {!loaded && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white text-lg font-semibold">
+          Cargando sonidos del piano...
+        </div>
+      )}
+      <Canvas camera={{ position: [0, 4, 10], fov: 45 }} shadows>
+        <ambientLight intensity={0.4} />
         <directionalLight
-          position={[5, 10, 5]}
+          position={[5, 8, 5]}
           intensity={1.2}
           castShadow
           shadow-mapSize-width={2048}
@@ -86,6 +132,7 @@ export default function Piano3D() {
             width={1}
             depth={4}
             position={[i * 1.2 - 4, 0, 0]}
+            sampler={sampler}
           />
         ))}
 
@@ -97,7 +144,8 @@ export default function Piano3D() {
             color="black"
             width={0.7}
             depth={2.5}
-            position={[offset * 1.2 - 4, 0.15, -0.5]}
+            position={[offset * 1.2 - 4, 0.15, -0.3]}
+            sampler={sampler}
           />
         ))}
 
