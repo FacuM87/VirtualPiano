@@ -4,8 +4,10 @@ import * as THREE from "three";
 import * as Tone from "tone";
 import { useEffect, useRef, useState } from "react";
 
-// Configuración de notas (a mejorar, todo hardcodeado por ahora para testeo)
-const whiteKeys = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
+/* SETUP DE NOTAS - a mejorar, hardcodeado por el momento para testeo*/
+
+const whiteKeys = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"];
+
 const blackKeys = [
   { note: "C#4", offset: 0.7 },
   { note: "D#4", offset: 1.7 },
@@ -14,22 +16,50 @@ const blackKeys = [
   { note: "A#4", offset: 5.7 },
 ];
 
+const keyMap: Record<string, string> = {
+  a: "C4",
+  w: "C#4",
+  s: "D4",
+  e: "D#4",
+  d: "E4",
+  f: "F4",
+  t: "F#4",
+  g: "G4",
+  y: "G#4",
+  h: "A4",
+  u: "A#4",
+  j: "B4",
+  k: "C5",
+};
+
+/* COMPONENTE TEECLA DEL PIANO */
+
 type KeyProps = {
-  color: string;
+  note: string;
+  color: "white" | "black";
   position: [number, number, number];
   width: number;
   depth: number;
-  note: string;
-  sampler: Tone.Sampler | null;
+  active: boolean;
+  onPress: (note: string) => void;
+  onRelease: (note: string) => void;
 };
 
-function Key({ color, position, width, depth, note, sampler }: KeyProps) {
-  const [pressed, setPressed] = useState(false);
+function Key({
+  note,
+  color,
+  position,
+  width,
+  depth,
+  active,
+  onPress,
+  onRelease,
+}: KeyProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame(() => {
     if (!meshRef.current) return;
-    const targetY = pressed ? -0.15 : 0;
+    const targetY = active ? -0.15 : 0;
     meshRef.current.position.y = THREE.MathUtils.lerp(
       meshRef.current.position.y,
       position[1] + targetY,
@@ -37,31 +67,24 @@ function Key({ color, position, width, depth, note, sampler }: KeyProps) {
     );
   });
 
-  const handlePress = (e: PointerEvent) => {
-    e.stopPropagation();
-    setPressed(true);
-    if (sampler) {
-      sampler.triggerAttack(note); 
-    }
-  };
-
-  const handleRelease = (e: PointerEvent) => {
-    e.stopPropagation();
-    setPressed(false);
-    if (sampler) {
-      sampler.triggerRelease(note, "+0.2"); 
-    }
-  };
-
   return (
     <mesh
       ref={meshRef}
       position={position}
       castShadow
       receiveShadow
-      onPointerDown={handlePress}
-      onPointerUp={handleRelease}
-      onPointerLeave={handleRelease}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onPress(note);
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        onRelease(note);
+      }}
+      onPointerLeave={(e) => {
+        e.stopPropagation();
+        onRelease(note);
+      }}
     >
       <boxGeometry args={[width, 0.5, depth]} />
       <meshStandardMaterial
@@ -73,11 +96,14 @@ function Key({ color, position, width, depth, note, sampler }: KeyProps) {
   );
 }
 
+/* COMPONENTE PIANO 3D */
+
 export default function Piano3D() {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [pressedNotes, setPressedNotes] = useState<Set<string>>(new Set());
 
-  // Cargar el sampler de Tone.js - a confirmar el useEffect
+  /* -------- Tone Sampler -------- */
   useEffect(() => {
     const s = new Tone.Sampler({
       urls: {
@@ -87,7 +113,7 @@ export default function Piano3D() {
         A4: "A4.mp3",
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
-      release: 2, 
+      release: 2,
       onload: () => {
         setSampler(s);
         setLoaded(true);
@@ -100,6 +126,49 @@ export default function Piano3D() {
     };
   }, []);
 
+
+
+  /* -------- Piano 3D -------- */
+  const pressNote = (note: string) => {
+    if (!sampler || pressedNotes.has(note)) return;
+
+    sampler.triggerAttack(note);
+    setPressedNotes((prev) => new Set(prev).add(note));
+  };
+
+  const releaseNote = (note: string) => {
+    if (!sampler) return;
+
+    sampler.triggerRelease(note, "+0.2");
+    setPressedNotes((prev) => {
+      const next = new Set(prev);
+      next.delete(note);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!sampler) return;
+
+    const down = (e: KeyboardEvent) => {
+      const note = keyMap[e.key.toLowerCase()];
+      if (note) pressNote(note);
+    };
+
+    const up = (e: KeyboardEvent) => {
+      const note = keyMap[e.key.toLowerCase()];
+      if (note) releaseNote(note);
+    };
+
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [sampler, pressedNotes]);
+
   return (
     <div className="w-full h-screen bg-gradient-to-b from-gray-800 to-black">
       {!loaded && (
@@ -107,8 +176,10 @@ export default function Piano3D() {
           Cargando sonidos del piano...
         </div>
       )}
+
       <Canvas camera={{ position: [0, 4, 10], fov: 45 }} shadows>
         <ambientLight intensity={0.4} />
+
         <directionalLight
           position={[5, 8, 5]}
           intensity={1.2}
@@ -126,13 +197,14 @@ export default function Piano3D() {
         {/* Teclas blancas */}
         {whiteKeys.map((note, i) => (
           <Key
-            key={note}
             note={note}
             color="white"
             width={1}
             depth={4}
-            position={[i * 1.2 - 4, 0, 0]}
-            sampler={sampler}
+            position={[i * 1.2 - 4.2, 0, 0]}
+            active={pressedNotes.has(note)}
+            onPress={pressNote}
+            onRelease={releaseNote}
           />
         ))}
 
@@ -144,8 +216,10 @@ export default function Piano3D() {
             color="black"
             width={0.7}
             depth={2.5}
-            position={[offset * 1.2 - 4, 0.15, -0.3]}
-            sampler={sampler}
+            position={[offset * 1.2 - 4.2, 0.15, -0.3]}
+            active={pressedNotes.has(note)}
+            onPress={pressNote}
+            onRelease={releaseNote}
           />
         ))}
 
