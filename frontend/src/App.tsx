@@ -1,12 +1,14 @@
 import './App.css'
-import Piano from './components/Piano/Piano'
+import Piano3D from './components/Piano/Piano3D'
+// import Piano from './components/Piano/Piano'
 
 function App() {
 
 
   return (
     <>
-      <Piano/>
+      {/* <Piano/> */}
+      <Piano3D/>
     </>
   )
 }

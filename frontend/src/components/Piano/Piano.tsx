@@ -33,7 +33,7 @@ export default function Piano() {
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
   const [activeNotes, setActiveNotes] = useState<Record<string, boolean>>({});
-
+     
   useEffect(() => {
     const s: Tone.Sampler = new Tone.Sampler({
       urls: {
@@ -44,7 +44,7 @@ export default function Piano() {
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
       onload: () => {
-        console.log("🎵 Sampler cargado");
+        console.log("Sampler cargado");
         setSampler(s);
         setLoaded(true);
       },
