@@ -100,7 +100,6 @@ function Key({
 
 export default function Piano3D() {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
-  const [loaded, setLoaded] = useState(false);
   const [pressedNotes, setPressedNotes] = useState<Set<string>>(new Set());
 
   /* -------- Tone Sampler -------- */
@@ -116,7 +115,6 @@ export default function Piano3D() {
       release: 2,
       onload: () => {
         setSampler(s);
-        setLoaded(true);
         console.log("Sampler cargado");
       },
     }).toDestination();
@@ -126,7 +124,9 @@ export default function Piano3D() {
     };
   }, []);
 
-
+  useEffect(() => {
+    Tone.start();
+  }, []);
 
   /* -------- Piano 3D -------- */
   const pressNote = (note: string) => {
@@ -171,11 +171,6 @@ export default function Piano3D() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-gray-800 to-black">
-      {!loaded && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white text-lg font-semibold">
-          Cargando sonidos del piano...
-        </div>
-      )}
 
       <Canvas camera={{ position: [0, 4, 10], fov: 45 }} shadows>
         <ambientLight intensity={0.4} />
