@@ -28,8 +28,6 @@ const keyMap: Record<string, string> = {
 
 export default function Piano() {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
-  // const [started, setStarted] = useState(false);
-  // const [loaded, setLoaded] = useState(false);
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
   const [activeNotes, setActiveNotes] = useState<Record<string, boolean>>({});
@@ -46,7 +44,6 @@ export default function Piano() {
       onload: () => {
         console.log("Sampler cargado");
         setSampler(s);
-        // setLoaded(true);
       },
     }).toDestination();
 
@@ -84,11 +81,6 @@ export default function Piano() {
     };
   }, [sampler, pressedKeys]);
 
-  // const startAudio = async () => {
-  //   await Tone.start();
-  //   setStarted(true);
-  // };
-
   const playNote = (note: string) => {
     if (!sampler) return;
     if (Tone.context.state !== "running") Tone.context.resume();
@@ -120,20 +112,6 @@ export default function Piano() {
       return newSet;
     });
   };
-
-  // if (!started || !loaded) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center mt-20 text-center">
-  //       <button
-  //         onClick={startAudio}
-  //         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all"
-  //       >
-  //         🎵 {loaded ? "Iniciar Piano" : "Cargando Piano..."}
-  //       </button>
-  //       {!loaded && <p className="text-sm text-gray-400 mt-2">Cargando sonidos...</p>}
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="flex justify-center mt-10 perspective-[1000px] select-none">
