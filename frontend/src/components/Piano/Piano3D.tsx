@@ -98,12 +98,15 @@ function Key({
 
 /* COMPONENTE PIANO 3D */
 
-export default function Piano3D() {
+type Props = { setMode: (mode: "2D" | "3D" | null) => void };
+
+export default function Piano3D({ setMode }: Props) {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
   const [pressedNotes, setPressedNotes] = useState<Set<string>>(new Set());
 
   /* -------- Tone Sampler -------- */
   useEffect(() => {
+    let isCurrent = true;
     const s = new Tone.Sampler({
       urls: {
         C4: "C4.mp3",
@@ -114,13 +117,17 @@ export default function Piano3D() {
       baseUrl: "https://tonejs.github.io/audio/salamander/",
       release: 2,
       onload: () => {
-        setSampler(s);
-        console.log("Sampler cargado");
+        if (isCurrent) {
+          setSampler(s);
+          console.log("Sampler cargado");
+        }
       },
     }).toDestination();
 
     return () => {
+      isCurrent = false;
       s.dispose();
+      setSampler(null);
     };
   }, []);
 
@@ -132,6 +139,7 @@ export default function Piano3D() {
   const pressNote = (note: string) => {
     if (!sampler || pressedNotes.has(note)) return;
 
+    Tone.start();
     sampler.triggerAttack(note);
     setPressedNotes((prev) => new Set(prev).add(note));
   };
@@ -170,7 +178,13 @@ export default function Piano3D() {
   }, [sampler, pressedNotes]);
 
   return (
-    <div className="w-full h-screen bg-gradient-to-b from-gray-800 to-black">
+    <div className="w-full h-screen bg-linear-to-b from-gray-800 to-black relative">
+      <button
+        className="absolute top-4 left-4 z-10 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow-md transition-all"
+        onClick={() => setMode(null)}
+      >
+        ← Volver
+      </button>
 
       <Canvas camera={{ position: [0, 4, 10], fov: 45 }} shadows>
         <ambientLight intensity={0.4} />
@@ -192,6 +206,7 @@ export default function Piano3D() {
         {/* Teclas blancas */}
         {whiteKeys.map((note, i) => (
           <Key
+            key={note}
             note={note}
             color="white"
             width={1}

@@ -16,7 +16,7 @@ function App() {
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all" onClick={() => setMode('3D')}>Piano 3D</button>
           </div>
         ) : (
-          mode === '2D' ? <Piano/> : <Piano3D/>
+          mode === '2D' ? <Piano setMode={setMode}/> : <Piano3D setMode={setMode}/>
         )
       }
     </>

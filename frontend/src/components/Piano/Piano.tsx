@@ -26,13 +26,14 @@ const keyMap: Record<string, string> = {
   k: "C5",
 };
 
-export default function Piano() {
+type Props = { setMode: (mode: "2D" | "3D" | null) => void };
+
+export default function Piano({ setMode }: Props) {
   const [sampler, setSampler] = useState<Tone.Sampler | null>(null);
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
-  const [activeNotes, setActiveNotes] = useState<Record<string, boolean>>({});
-     
   useEffect(() => {
+    let isCurrent = true;
     const s: Tone.Sampler = new Tone.Sampler({
       urls: {
         C4: "C4.mp3",
@@ -41,13 +42,20 @@ export default function Piano() {
         A4: "A4.mp3",
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
+      release: 2,
       onload: () => {
-        console.log("Sampler cargado");
-        setSampler(s);
+        if (isCurrent) {
+          console.log("Sampler cargado");
+          setSampler(s);
+        }
       },
     }).toDestination();
 
-    return () => {s.dispose()};
+    return () => {
+      isCurrent = false;
+      s.dispose();
+      setSampler(null);
+    };
   }, []);
 
   useEffect(() => {
@@ -83,20 +91,13 @@ export default function Piano() {
 
   const playNote = (note: string) => {
     if (!sampler) return;
-    if (Tone.context.state !== "running") Tone.context.resume();
-
-    setActiveNotes((prev) => ({ ...prev, [note]: true }));
-
+    Tone.start();
     sampler.triggerAttack(note);
   };
 
   const releaseNote = (note: string) => {
     if (!sampler) return;
-    setActiveNotes((prev) => ({ ...prev, [note]: false }));
-
-    setTimeout(() => {
-      if (!activeNotes[note]) sampler.triggerRelease(note, 0.5); 
-    }, 50);
+    sampler.triggerRelease(note, "+0.2");
   };
 
   const handleMouseDown = (note: string) => {
@@ -114,8 +115,14 @@ export default function Piano() {
   };
 
   return (
-    <div className="flex justify-center mt-10 perspective-[1000px] select-none">
-      <div className="relative flex">
+    <div className="flex flex-col items-center mt-10 gap-4 select-none">
+      <button
+        className="self-start ml-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow-md transition-all"
+        onClick={() => setMode(null)}
+      >
+        ← Volver
+      </button>
+      <div className="relative flex perspective-[1000px]">
         {/* Teclas blancas */}
         {whiteKeys.map((note) => (
           <div
